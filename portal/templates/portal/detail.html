@@ -1,0 +1,801 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ term_label }} Result — {{ student.full_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink:        #0d0f14;
+      --ink-soft:   #3a3d47;
+      --paper:      #f5f2ec;
+      --cream:      #ede9e0;
+      --gold:       #c8a84b;
+      --gold-light: #f0d98a;
+      --teal:       #1a7a6e;
+      --red:        #c0392b;
+      --red-light:  #fbeae8;
+      --blue:       #1e4fa3;
+      --blue-light: #e8edf8;
+      --green:      #1e7a44;
+      --green-light:#e6f4ec;
+      --shadow-sm:  0 2px 8px rgba(13,15,20,0.08);
+      --shadow-md:  0 8px 32px rgba(13,15,20,0.12);
+      --shadow-lg:  0 24px 64px rgba(13,15,20,0.18);
+      --radius:     16px;
+      --transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(245,242,236,0.88);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(200,168,75,0.18);
+      padding: 0 clamp(16px,4vw,48px);
+    }
+    .header-inner {
+      max-width: 980px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px; gap: 12px;
+    }
+    .logo { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+    .logo-mark {
+      width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #e8c060);
+      display: grid; place-items: center;
+      font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 900; color: var(--ink);
+      box-shadow: 0 3px 10px rgba(200,168,75,0.32);
+    }
+    .logo-text span:first-child {
+      display: block; font-family: 'Playfair Display', serif;
+      font-size: 14px; font-weight: 700; color: var(--ink);
+    }
+    .logo-text span:last-child {
+      display: block; font-size: 10px; color: var(--ink-soft);
+      letter-spacing: 0.09em; text-transform: uppercase;
+    }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1.5px solid rgba(13,15,20,0.13); background: transparent;
+      color: var(--ink-soft); font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition);
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--ink); }
+    .btn-primary {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 9px;
+      background: var(--ink); color: var(--paper); border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .btn-primary:hover { background: #1e2130; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-primary.loading { opacity: .7; pointer-events: none; }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 980px; margin: 0 auto;
+      padding: clamp(24px,4vw,48px) clamp(16px,4vw,48px) 80px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── BREADCRUMB ── */
+    .breadcrumb {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--ink-soft); margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .breadcrumb a { color: var(--gold); text-decoration: none; font-weight: 500; }
+    .breadcrumb a:hover { opacity: .7; }
+    .breadcrumb svg { opacity: .4; flex-shrink: 0; }
+
+    /* ── PDF AREA ── */
+    #pdfArea {
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(13,15,20,0.05);
+      overflow: hidden;
+    }
+
+    /* ── PDF Header band ── */
+    .pdf-header {
+      background: var(--ink);
+      padding: clamp(28px,4vw,44px) clamp(28px,4vw,44px) clamp(24px,3vw,36px);
+      position: relative; overflow: hidden;
+    }
+    .pdf-header::before {
+      content: '';
+      position: absolute; top: -80px; right: -80px;
+      width: 320px; height: 320px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,168,75,0.18) 0%, transparent 70%);
+    }
+    .pdf-header-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 20px; position: relative; z-index: 1;
+    }
+    .school-brand { display: flex; align-items: center; gap: 14px; }
+    .school-seal {
+      width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #e8c060);
+      display: grid; place-items: center;
+      font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: var(--ink);
+      box-shadow: 0 4px 16px rgba(200,168,75,0.4);
+    }
+    .school-info span:first-child {
+      display: block; font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 900; color: #fff; letter-spacing: 0.01em;
+    }
+    .school-info span:last-child {
+      display: block; font-size: 11px; color: rgba(255,255,255,0.45);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
+    }
+    .result-title-block { text-align: right; }
+    .result-title-block h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(22px,3.5vw,32px); font-weight: 900; color: #fff; line-height: 1.1;
+    }
+    .result-title-block p {
+      font-size: 12px; color: var(--gold-light); margin-top: 5px; font-weight: 400;
+    }
+    .wave-sep { display: none; }
+
+    /* ── Student info band ── */
+    .student-band {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 20px; align-items: center;
+      padding: 24px clamp(28px,4vw,44px);
+      border-bottom: 1px solid rgba(13,15,20,0.07);
+    }
+    .student-info-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+      gap: 16px 24px;
+    }
+    .info-item { line-height: 1.3; }
+    .info-label {
+      font-size: 10px; font-weight: 700; color: var(--ink-soft);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px;
+    }
+    .info-value { font-size: 14px; font-weight: 600; color: var(--ink); }
+    .info-value.mono { font-family: 'DM Mono', monospace; font-weight: 500; }
+    .overall-badge {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--ink); border-radius: 14px;
+      padding: 16px 24px; min-width: 110px;
+    }
+    .overall-grade {
+      font-family: 'Playfair Display', serif;
+      font-size: 42px; font-weight: 900; color: var(--gold); line-height: 1;
+    }
+    .overall-avg {
+      font-family: 'DM Mono', monospace; font-size: 13px;
+      color: rgba(255,255,255,0.6); margin-top: 3px;
+    }
+    .overall-label {
+      font-size: 9px; color: rgba(255,255,255,0.4);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px;
+    }
+
+    /* ── Scores summary strip ── */
+    .score-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid rgba(13,15,20,0.07);
+    }
+    .strip-item {
+      padding: 18px 20px; text-align: center;
+      border-right: 1px solid rgba(13,15,20,0.06);
+    }
+    .strip-item:last-child { border-right: none; }
+    .strip-val {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(20px,3vw,28px); font-weight: 500;
+      color: var(--ink); line-height: 1;
+    }
+    .strip-val.gold  { color: var(--gold); }
+    .strip-val.green { color: var(--green); }
+    .strip-val.blue  { color: var(--blue); }
+    .strip-lbl {
+      font-size: 10px; font-weight: 600; color: var(--ink-soft);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-top: 5px;
+    }
+
+    /* ── Section heading ── */
+    .section-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px clamp(28px,4vw,44px) 0; margin-bottom: 0;
+    }
+    .section-head h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px; font-weight: 700; color: var(--ink);
+    }
+    .section-line { flex: 1; height: 1px; background: rgba(13,15,20,0.08); }
+
+    /* ── Subject table ── */
+    .table-wrap { padding: 0 clamp(28px,4vw,44px); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 540px; }
+    thead tr { background: var(--cream); }
+    th {
+      padding: 11px 14px; text-align: left;
+      font-size: 10px; font-weight: 700; color: var(--ink-soft);
+      letter-spacing: 0.09em; text-transform: uppercase; white-space: nowrap;
+    }
+    th:last-child, th.num { text-align: center; }
+    tbody tr { border-bottom: 1px solid rgba(13,15,20,0.05); transition: background .18s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(200,168,75,0.04); }
+    td { padding: 13px 14px; font-size: 13px; color: var(--ink); vertical-align: middle; }
+    td.num { text-align: center; }
+    .subj-name { font-weight: 500; display: flex; align-items: center; gap: 9px; }
+    .subj-icon { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-size: 13px; flex-shrink: 0; }
+    .bar-cell { min-width: 130px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; }
+    .bar-bg { flex: 1; height: 5px; background: var(--cream); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); width: 0; }
+    .bar-num { font-family: 'DM Mono', monospace; font-size: 12px; min-width: 26px; text-align: right; }
+    .grade {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 7px; font-size: 12px; font-weight: 700;
+    }
+    .gA { background: var(--green-light); color: var(--green); }
+    .gB { background: var(--blue-light);  color: var(--blue); }
+    .gC { background: #fff8e1; color: #b8860b; }
+    .gD { background: rgba(255,152,0,.12); color: #e65100; }
+    .gF { background: var(--red-light); color: var(--red); }
+    .remark { display: inline-block; padding: 3px 8px; border-radius: 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .rA { background: var(--green-light); color: var(--green); }
+    .rB { background: var(--blue-light);  color: var(--blue); }
+    .rC { background: #fff8e1; color: #b8860b; }
+    .rD,.rF { background: var(--red-light); color: var(--red); }
+
+    /* ── Grading key ── */
+    .grade-key {
+      margin: 16px clamp(28px,4vw,44px);
+      background: var(--cream); border-radius: 12px; padding: 14px 18px;
+      display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center;
+    }
+    .grade-key-title { font-size: 10px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.08em; text-transform: uppercase; margin-right: 4px; }
+    .key-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+    .key-badge { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+
+    /* ── Teacher comments ── */
+    .comments-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 clamp(28px,4vw,44px) 24px; }
+    .comment-box { background: var(--cream); border-radius: 12px; padding: 18px; border: 1px solid rgba(13,15,20,0.07); }
+    .comment-who { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .comment-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+    .comment-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .comment-role { font-size: 10px; color: var(--ink-soft); }
+    .comment-text { font-size: 12px; line-height: 1.65; color: var(--ink-soft); font-style: italic; border-left: 3px solid var(--gold); padding-left: 12px; }
+
+    /* ── Footer stamp ── */
+    .pdf-footer {
+      margin: 0 clamp(28px,4vw,44px) 32px;
+      background: var(--ink); border-radius: 14px; padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    }
+    .stamp-row { display: flex; align-items: center; gap: 12px; }
+    .stamp-ring { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--gold); display: grid; place-items: center; color: var(--gold); font-size: 18px; }
+    .stamp-text strong { display: block; font-size: 13px; color: #fff; }
+    .stamp-text span   { font-size: 11px; color: rgba(255,255,255,0.45); }
+    .pdf-footer-right  { text-align: right; }
+    .pdf-footer-right p { font-size: 11px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+    .pdf-footer-right .mono { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold-light); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.55s cubic-bezier(0.4,0,0.2,1) both; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .pdf-header-top { flex-direction: column; }
+      .result-title-block { text-align: left; }
+      .student-band { grid-template-columns: 1fr; }
+      .overall-badge { flex-direction: row; gap: 12px; align-items: center; }
+      .score-strip { grid-template-columns: repeat(2,1fr); }
+      .comments-grid { grid-template-columns: 1fr; }
+      .header-actions .btn-ghost { display: none; }
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--ink); color: #fff; padding: 12px 22px;
+      border-radius: 30px; font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-lg); z-index: 500; transition: transform .4s cubic-bezier(.4,0,.2,1);
+      display: flex; align-items: center; gap: 9px; white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast-spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media print {
+      header, .breadcrumb, .header-actions { display: none !important; }
+      body { background: white; }
+      #pdfArea { box-shadow: none; border-radius: 0; }
+    }
+
+    /* ── PDF Preview Modal ── */
+    .pdf-modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(10,12,18,0.72);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 24px 16px 32px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+      overflow-y: auto;
+    }
+    .pdf-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .pdf-modal {
+      width: 100%; max-width: 820px;
+      background: #1a1c24; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      transform: translateY(24px);
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column;
+    }
+    .pdf-modal-overlay.open .pdf-modal { transform: translateY(0); }
+    .pdf-modal-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; background: #13151e;
+      border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+    }
+    .pdf-modal-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #fff; }
+    .pdf-modal-title svg { opacity: 0.6; }
+    .pdf-modal-actions { display: flex; align-items: center; gap: 10px; }
+    .pdf-page-info { font-size: 12px; color: rgba(255,255,255,0.4); font-family: 'DM Mono', monospace; }
+    .pdf-btn-download {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 8px;
+      background: var(--gold); color: var(--ink); border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: var(--transition);
+    }
+    .pdf-btn-download:hover { background: var(--gold-light); transform: translateY(-1px); }
+    .pdf-btn-download:disabled { opacity: 0.6; pointer-events: none; }
+    .pdf-btn-close {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(255,255,255,0.07); border: none;
+      color: rgba(255,255,255,0.6); cursor: pointer;
+      display: grid; place-items: center; transition: var(--transition);
+    }
+    .pdf-btn-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+    .pdf-modal-body { padding: 28px 24px 32px; overflow-y: auto; max-height: calc(100vh - 180px); }
+    .pdf-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 0; color: rgba(255,255,255,0.45); font-size: 13px; }
+    .pdf-loading-spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--gold); animation: spin .8s linear infinite; }
+    .pdf-pages-container { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+    .pdf-page-wrapper { position: relative; width: 100%; background: #fff; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06); overflow: hidden; }
+    .pdf-page-wrapper canvas { display: block; width: 100%; height: auto; }
+    .pdf-page-label { position: absolute; bottom: 10px; right: 12px; background: rgba(0,0,0,0.45); color: rgba(255,255,255,0.7); font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 20px; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-inner">
+    <a href="{% url 'dashboard' %}" class="logo">
+      <div class="logo-mark">E</div>
+      <div class="logo-text">
+        <span>Evergreen Academy</span>
+        <span>Student Portal</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <a href="{% url 'dashboard' %}" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Back to Results
+      </a>
+      <button class="btn-primary" id="downloadBtn" onclick="openPdfPreview()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="btnLabel">Download PDF</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb fade-up">
+    <a href="{% url 'dashboard' %}">Dashboard</a>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="{% url 'dashboard' %}">Results</a>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <span>{{ term_label }} {% if summary %}{{ summary.session }}{% endif %}</span>
+  </div>
+
+  <!-- ═══════════ PDF AREA ═══════════ -->
+  <div id="pdfArea" class="fade-up" style="animation-delay:.08s">
+
+    <!-- Dark header -->
+    <div class="pdf-header">
+      <div class="pdf-header-top">
+        <div class="school-brand">
+          <div class="school-seal">E</div>
+          <div class="school-info">
+            <span>Evergreen Academy</span>
+            <span>Excellence in Education since 1998</span>
+          </div>
+        </div>
+        <div class="result-title-block">
+          <h1>Academic Result Sheet</h1>
+          <p>{{ term_label }} &nbsp;·&nbsp; {% if summary %}{{ summary.session }}{% endif %} Session</p>
+        </div>
+      </div>
+      <div class="wave-sep"></div>
+    </div>
+
+    <!-- Student info -->
+    <div class="student-band">
+      <div class="student-info-grid">
+        <div class="info-item">
+          <div class="info-label">Student Name</div>
+          <div class="info-value">{{ student.full_name }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Student ID</div>
+          <div class="info-value mono">{{ student.student_id }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Class</div>
+          <div class="info-value">{{ student.class_name }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Form Tutor</div>
+          <div class="info-value">{% if summary %}{{ summary.form_tutor|default:"—" }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">No. of Students</div>
+          <div class="info-value mono">{% if summary %}{{ summary.total_students }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Class Position</div>
+          <div class="info-value">{% if summary %}{{ summary.class_position }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Term</div>
+          <div class="info-value">{{ term_label }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Session</div>
+          <div class="info-value mono">{% if summary %}{{ summary.session }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      <div class="overall-badge">
+        <div class="overall-grade">{{ overall_grade }}</div>
+        <div class="overall-avg">{{ average }}%</div>
+        <div class="overall-label">Overall</div>
+      </div>
+    </div>
+
+    <!-- Score strip -->
+    <div class="score-strip">
+      <div class="strip-item">
+        <div class="strip-val gold">{{ total_score }}</div>
+        <div class="strip-lbl">Total Score</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-val">{{ average }}</div>
+        <div class="strip-lbl">Average %</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-val green">{% if summary %}{{ summary.class_position }}{% else %}—{% endif %}</div>
+        <div class="strip-lbl">Position</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-val blue">{% if summary %}{{ summary.attendance }}%{% else %}—{% endif %}</div>
+        <div class="strip-lbl">Attendance</div>
+      </div>
+    </div>
+
+    <!-- Subject Results -->
+    <div class="section-head" style="margin-top:20px">
+      <h2>Subject Performance</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:14px; margin-bottom:8px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th class="num">1st CA<br><small style="font-weight:400;letter-spacing:0;text-transform:none">/20</small></th>
+            <th class="num">2nd CA<br><small style="font-weight:400;letter-spacing:0;text-transform:none">/20</small></th>
+            <th class="num">Exam<br><small style="font-weight:400;letter-spacing:0;text-transform:none">/60</small></th>
+            <th class="num">Total<br><small style="font-weight:400;letter-spacing:0;text-transform:none">/100</small></th>
+            <th class="bar-cell">Score</th>
+            <th class="num">Grade</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td><div class="subj-name"><span class="subj-icon">{{ row.subject_icon }}</span>{{ row.subject_name }}</div></td>
+            <td class="num"><span style="font-family:'DM Mono',monospace">{{ row.ca1 }}</span></td>
+            <td class="num"><span style="font-family:'DM Mono',monospace">{{ row.ca2 }}</span></td>
+            <td class="num"><span style="font-family:'DM Mono',monospace">{{ row.exam }}</span></td>
+            <td class="num"><strong style="font-family:'DM Mono',monospace;font-size:14px">{{ row.total }}</strong></td>
+            <td class="bar-cell">
+              <div class="bar-row">
+                <div class="bar-bg">
+                  <div class="bar-fill" data-w="{{ row.total }}"
+                    style="background:{% if row.total >= 75 %}#1e7a44{% elif row.total >= 65 %}#1e4fa3{% elif row.total >= 55 %}#b8860b{% else %}#c0392b{% endif %}">
+                  </div>
+                </div>
+                <span class="bar-num">{{ row.total }}</span>
+              </div>
+            </td>
+            <td class="num"><span class="grade g{{ row.grade }}">{{ row.grade }}</span></td>
+            <td><span class="remark r{{ row.grade }}">{{ row.remark }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Grading key -->
+    <div class="grade-key">
+      <span class="grade-key-title">Key:</span>
+      <div class="key-item"><div class="key-badge gA">A</div> 75–100 · Excellent</div>
+      <div class="key-item"><div class="key-badge gB">B</div> 65–74 · Good</div>
+      <div class="key-item"><div class="key-badge gC">C</div> 55–64 · Average</div>
+      <div class="key-item"><div class="key-badge gD">D</div> 45–54 · Below Average</div>
+      <div class="key-item"><div class="key-badge gF">F</div> 0–44 · Fail</div>
+    </div>
+
+    <!-- Teacher Comments -->
+    <div class="section-head">
+      <h2>Comments &amp; Remarks</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="comments-grid" style="margin-top:14px">
+      <div class="comment-box">
+        <div class="comment-who">
+          <div class="comment-avatar" style="background:var(--teal)">FT</div>
+          <div>
+            <div class="comment-name">{% if summary %}{{ summary.form_tutor|default:"Form Tutor" }}{% else %}Form Tutor{% endif %}</div>
+            <div class="comment-role">Form Tutor — {{ student.class_name }}</div>
+          </div>
+        </div>
+        <p class="comment-text">{% if summary and summary.teacher_comment %}{{ summary.teacher_comment }}{% else %}No comment recorded.{% endif %}</p>
+      </div>
+      <div class="comment-box">
+        <div class="comment-who">
+          <div class="comment-avatar" style="background:var(--blue)">VP</div>
+          <div>
+            <div class="comment-name">Vice Principal</div>
+            <div class="comment-role">Academics</div>
+          </div>
+        </div>
+        <p class="comment-text">{% if summary and summary.principal_comment %}{{ summary.principal_comment }}{% else %}No comment recorded.{% endif %}</p>
+      </div>
+    </div>
+
+    <!-- Footer stamp -->
+    <div class="pdf-footer">
+      <div class="stamp-row">
+        <div class="stamp-ring">✓</div>
+        <div class="stamp-text">
+          <strong>Result Verified &amp; Approved</strong>
+          <span>Evergreen Academy · Academic Board</span>
+        </div>
+      </div>
+      <div class="pdf-footer-right">
+        <p>Next Term Begins: <span class="mono">{% if summary and summary.next_term_begins %}{{ summary.next_term_begins|date:"d M Y" }}{% else %}—{% endif %}</span></p>
+        <p style="margin-top:4px; font-size:10px; opacity:.5">This is an official document. Any alteration is a criminal offence.</p>
+      </div>
+    </div>
+
+  </div><!-- /#pdfArea -->
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-spinner" id="toastSpinner"></div>
+  <span id="toastMsg">Generating PDF…</span>
+</div>
+
+<!-- PDF Preview Modal -->
+<div class="pdf-modal-overlay" id="pdfModal">
+  <div class="pdf-modal">
+    <div class="pdf-modal-topbar">
+      <div class="pdf-modal-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PDF Preview
+      </div>
+      <div class="pdf-modal-actions">
+        <span class="pdf-page-info" id="pdfPageInfo"></span>
+        <button class="pdf-btn-download" id="confirmDownloadBtn" onclick="confirmDownload()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="pdf-btn-close" onclick="closePdfPreview()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="pdf-modal-body" id="pdfModalBody">
+      <div class="pdf-loading" id="pdfLoading">
+        <div class="pdf-loading-spinner"></div>
+        <span>Rendering preview…</span>
+      </div>
+      <div class="pdf-pages-container" id="pdfPagesContainer"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Animate score bars on load ── */
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.bar-fill').forEach(el => {
+        el.style.width = el.dataset.w + '%';
+      });
+    }, 300);
+  });
+
+  /* ── PDF Preview & Download ── */
+  let _cachedCanvas = null;
+
+  /* Django passes the student name and term for the filename */
+  const PDF_FILENAME = "Result_{{ student.student_id }}_{{ term_label|slugify }}.pdf";
+
+  async function openPdfPreview() {
+    const overlay   = document.getElementById('pdfModal');
+    const loading   = document.getElementById('pdfLoading');
+    const container = document.getElementById('pdfPagesContainer');
+    const pageInfo  = document.getElementById('pdfPageInfo');
+
+    container.innerHTML = '';
+    loading.style.display = 'flex';
+    pageInfo.textContent  = '';
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    await new Promise(r => setTimeout(r, 80));
+
+    try {
+      const area = document.getElementById('pdfArea');
+      const canvas = await html2canvas(area, {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff',
+        logging: false, windowWidth: area.scrollWidth, windowHeight: area.scrollHeight,
+      });
+
+      _cachedCanvas = canvas;
+
+      const pageRatio  = 297 / 210;
+      const pageW      = canvas.width;
+      const pageH      = Math.round(pageW * pageRatio);
+      const totalPages = Math.ceil(canvas.height / pageH);
+
+      loading.style.display = 'none';
+      pageInfo.textContent  = totalPages === 1 ? '1 page' : `${totalPages} pages`;
+
+      for (let i = 0; i < totalPages; i++) {
+        const srcY = i * pageH;
+        const srcH = Math.min(pageH, canvas.height - srcY);
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = pageW;
+        pageCanvas.height = srcH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, pageW, srcH);
+        ctx.drawImage(canvas, 0, srcY, pageW, srcH, 0, 0, pageW, srcH);
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'pdf-page-wrapper';
+        wrapper.appendChild(pageCanvas);
+
+        if (totalPages > 1) {
+          const label = document.createElement('div');
+          label.className   = 'pdf-page-label';
+          label.textContent = `${i + 1} / ${totalPages}`;
+          wrapper.appendChild(label);
+        }
+
+        container.appendChild(wrapper);
+      }
+    } catch (err) {
+      loading.innerHTML = '<span style="color:rgba(255,100,80,0.8)">⚠ Preview failed. Try again.</span>';
+      console.error(err);
+    }
+  }
+
+  function closePdfPreview() {
+    document.getElementById('pdfModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('pdfModal').addEventListener('click', function(e) {
+    if (e.target === this) closePdfPreview();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closePdfPreview();
+  });
+
+  async function confirmDownload() {
+    const btn          = document.getElementById('confirmDownloadBtn');
+    const toast        = document.getElementById('toast');
+    const toastMsg     = document.getElementById('toastMsg');
+    const toastSpinner = document.getElementById('toastSpinner');
+
+    btn.disabled      = true;
+    btn.textContent   = 'Saving…';
+    toastMsg.textContent = 'Generating PDF, please wait…';
+    toastSpinner.style.display = '';
+    toast.classList.add('show');
+
+    await new Promise(r => setTimeout(r, 80));
+
+    try {
+      const canvas = _cachedCanvas || await (async () => {
+        const area = document.getElementById('pdfArea');
+        return html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+      })();
+
+      const { jsPDF } = window.jspdf;
+      const pageW = 210, pageH = 297, margin = 8;
+      const contentW = pageW - margin * 2;
+      const printW   = contentW;
+      const printH   = printW * (canvas.height / canvas.width);
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      let yLeft = printH, srcY = 0;
+
+      while (yLeft > 0) {
+        const sliceH  = Math.min(pageH - margin * 2, yLeft);
+        const slicePx = (sliceH / printH) * canvas.height;
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width  = canvas.width;
+        sliceCanvas.height = Math.round(slicePx);
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, srcY, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, printW, sliceH);
+        srcY  += sliceCanvas.height;
+        yLeft -= sliceH;
+        if (yLeft > 0) pdf.addPage();
+      }
+
+      pdf.save(PDF_FILENAME);
+
+      toastMsg.textContent = '✓ PDF downloaded successfully!';
+      toastSpinner.style.display = 'none';
+      setTimeout(() => { toast.classList.remove('show'); toastSpinner.style.display = ''; }, 2500);
+      closePdfPreview();
+
+    } catch (err) {
+      console.error(err);
+      toastMsg.textContent = '⚠ Download failed. Try again.';
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download`;
+    }
+  }
+</script>
+</body>
+</html>

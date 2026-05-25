@@ -1,0 +1,14 @@
+asgiref==3.11.1
+Django==6.0.5
+fire==0.7.1
+fonttools==4.63.0
+lxml==6.1.1
+numpy==2.4.6
+opencv-python-headless==4.13.0.92
+pdf2docx==0.5.13
+PyMuPDF==1.27.2.3
+python-docx==1.2.0
+sqlparse==0.5.5
+termcolor==3.3.0
+typing_extensions==4.15.0
+tzdata==2026.2

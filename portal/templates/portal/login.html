@@ -1,0 +1,639 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Login — Evergreen Academy Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:         #0d0f14;
+      --ink-soft:    #3a3d47;
+      --paper:       #f5f2ec;
+      --cream:       #ede9e0;
+      --gold:        #c8a84b;
+      --gold-light:  #f0d98a;
+      --red:         #c0392b;
+      --red-light:   #fbeae8;
+      --green:       #1e7a44;
+      --green-light: #e6f4ec;
+      --shadow-sm:   0 2px 8px rgba(13,15,20,0.08);
+      --shadow-md:   0 8px 32px rgba(13,15,20,0.14);
+      --shadow-lg:   0 24px 64px rgba(13,15,20,0.2);
+      --transition:  all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html {
+      height: 100%;
+      /* prevent iOS bounce shifting layout */
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100%;
+      /* mobile-first: stack naturally, center on big screens */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* safe area for notched phones */
+      padding: max(24px, env(safe-area-inset-top))
+               max(16px, env(safe-area-inset-right))
+               max(32px, env(safe-area-inset-bottom))
+               max(16px, env(safe-area-inset-left));
+      position: relative;
+    }
+
+    /* ── Background noise ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ── Glow blobs ── */
+    body::after {
+      content: '';
+      position: fixed; top: -160px; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 500px; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse at 35% 40%, rgba(200,168,75,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 75% 65%, rgba(26,122,110,0.09) 0%, transparent 55%);
+    }
+
+    /* ── Dot grid ── */
+    .bg-dots {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(circle, rgba(13,15,20,0.055) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 10%, transparent 100%);
+    }
+
+    /* ══════════════════════════════════════════
+       CARD  — mobile-first, expands on desktop
+    ══════════════════════════════════════════ */
+    .card {
+      position: relative; z-index: 1;
+      background: #fff;
+      border-radius: 24px;
+      /* tight on mobile, generous on desktop */
+      padding: 32px 24px 28px;
+      width: 100%;
+      max-width: 440px;
+      /* push card to top on mobile so keyboard doesn't squish it */
+      margin-top: 0;
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(13,15,20,0.05);
+      opacity: 0; transform: translateY(24px);
+      animation: cardUp 0.6s 0.08s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+    @keyframes cardUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Gold accent line at top */
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 52px; height: 3px; border-radius: 0 0 4px 4px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+    }
+
+    /* On tablets/desktop: centered with more breathing room */
+    @media (min-width: 540px) {
+      body {
+        justify-content: center;
+        min-height: 100vh;
+        padding: 40px 24px;
+      }
+      .card {
+        padding: 44px 44px 36px;
+        border-radius: 28px;
+        margin-top: 0;
+      }
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none; margin-bottom: 28px;
+    }
+    .logo-mark {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #e8c060);
+      display: grid; place-items: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 17px; font-weight: 900; color: var(--ink);
+      box-shadow: 0 3px 12px rgba(200,168,75,0.36);
+    }
+    .logo-text span:first-child {
+      display: block; font-family: 'Playfair Display', serif;
+      font-size: 14px; font-weight: 700; color: var(--ink);
+    }
+    .logo-text span:last-child {
+      display: block; font-size: 10px; font-weight: 400;
+      color: var(--ink-soft); letter-spacing: 0.1em;
+      text-transform: uppercase; margin-top: 1px;
+    }
+
+    /* ── Heading ── */
+    .card-heading { margin-bottom: 26px; }
+
+    .card-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.25);
+      border-radius: 20px; padding: 3px 11px;
+      font-size: 10px; font-weight: 700; color: var(--gold);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      /* clamp: 24px on very small phones → 32px on desktop */
+      font-size: clamp(24px, 6.5vw, 32px);
+      font-weight: 900; color: var(--ink);
+      line-height: 1.1; margin-bottom: 8px;
+    }
+
+    .card-sub {
+      font-size: 13.5px; color: var(--ink-soft);
+      font-weight: 400; line-height: 1.6;
+    }
+
+    /* ── Input group ── */
+    .input-group { margin-bottom: 18px; }
+
+    .input-label {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .input-label span {
+      font-size: 11px; font-weight: 700; color: var(--ink-soft);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .input-label a {
+      font-size: 12px; color: var(--gold); text-decoration: none; font-weight: 500;
+      /* bigger tap target */
+      padding: 4px 0;
+    }
+    .input-label a:active { opacity: .6; }
+
+    .input-wrap { position: relative; }
+
+    /* base input styles */
+    .input-wrap input {
+      width: 100%;
+      border: 1.5px solid rgba(13,15,20,0.13);
+      border-radius: 12px;
+      background: var(--paper);
+      color: var(--ink);
+      outline: none;
+      /* large enough tap target — min 48px height on mobile */
+      padding: 14px 48px 14px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px; /* 16px prevents iOS auto-zoom */
+      font-weight: 500;
+      transition: var(--transition);
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .input-wrap input::placeholder {
+      color: rgba(13,15,20,0.3); font-weight: 400; font-size: 14px;
+    }
+
+    /* PIN overrides */
+    #pinInput {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      letter-spacing: 0.2em;
+    }
+    #pinInput::placeholder {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; letter-spacing: 0.02em;
+    }
+
+    .input-wrap input:focus {
+      border-color: var(--gold); background: #fff;
+      box-shadow: 0 0 0 3px rgba(200,168,75,0.12);
+    }
+    .input-wrap input.error {
+      border-color: var(--red); background: #fff;
+      box-shadow: 0 0 0 3px rgba(192,57,43,0.08);
+      animation: shake .4s cubic-bezier(0.4,0,0.2,1);
+    }
+    .input-wrap input.success {
+      border-color: var(--green); background: #fff;
+      box-shadow: 0 0 0 3px rgba(30,122,68,0.1);
+    }
+    @keyframes shake {
+      0%,100%{ transform:translateX(0) }
+      20%{ transform:translateX(-6px) }
+      40%{ transform:translateX(6px) }
+      60%{ transform:translateX(-4px) }
+      80%{ transform:translateX(4px) }
+    }
+
+    /* Field icon (user icon on ID field) */
+    .input-icon {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--ink-soft); opacity: .35; pointer-events: none;
+      display: grid; place-items: center;
+    }
+
+    /* Eye toggle — big enough tap target */
+    .eye-btn {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--ink-soft); opacity: .45;
+      /* 44×44 tap target */
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      border-radius: 8px;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity .2s;
+    }
+    .eye-btn:active { opacity: 1; }
+
+    /* Error strip */
+    .error-msg {
+      display: none; align-items: flex-start; gap: 7px;
+      font-size: 12px; color: var(--red); margin-top: 8px;
+      padding: 9px 12px; background: var(--red-light);
+      border-radius: 9px; border-left: 3px solid var(--red);
+      line-height: 1.4;
+    }
+    .error-msg svg { flex-shrink: 0; margin-top: 1px; }
+    .error-msg.show { display: flex; }
+
+    /* ── PIN dots ── */
+    .pin-dots {
+      display: flex; justify-content: center; gap: 10px;
+      margin: 4px 0 22px;
+    }
+    .pin-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      border: 1.5px solid rgba(13,15,20,0.18);
+      background: transparent; transition: var(--transition);
+    }
+    .pin-dot.filled  { background: var(--gold);  border-color: var(--gold);  transform: scale(1.2); }
+    .pin-dot.complete{ background: var(--green); border-color: var(--green); transform: scale(1.15); }
+
+    /* ── Submit button ── */
+    .submit-btn {
+      width: 100%;
+      /* min 48px so it's thumb-friendly */
+      min-height: 52px;
+      padding: 14px;
+      background: var(--ink); color: #fff; border: none;
+      border-radius: 13px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      position: relative; overflow: hidden;
+      transition: var(--transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .submit-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(200,168,75,0.18), transparent 60%);
+      opacity: 0; transition: opacity .3s;
+    }
+    .submit-btn:active { transform: scale(0.98); opacity: .9; }
+    @media (hover: hover) {
+      .submit-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+      .submit-btn:hover::after { opacity: 1; }
+    }
+    .submit-btn.loading { pointer-events: none; opacity: .75; }
+    .submit-btn.loading .btn-text { display: none; }
+    .submit-btn.loading .spinner   { display: block; }
+
+    .spinner {
+      width: 20px; height: 20px; display: none;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0 16px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: rgba(13,15,20,0.09);
+    }
+    .divider span {
+      font-size: 11px; color: var(--ink-soft); font-weight: 500; white-space: nowrap;
+    }
+
+    /* ── Help strip ── */
+    .help-strip {
+      background: var(--cream); border-radius: 12px;
+      padding: 14px 16px; border: 1px solid rgba(13,15,20,0.07);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .help-icon {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      background: var(--ink); display: grid; place-items: center; color: #fff;
+    }
+    .help-text { min-width: 0; }
+    .help-text p:first-child {
+      font-size: 13px; font-weight: 600; color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .help-text p:last-child {
+      font-size: 11px; color: var(--ink-soft); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Card footer ── */
+    .card-footer {
+      margin-top: 20px; text-align: center;
+      font-size: 11.5px; color: var(--ink-soft); line-height: 1.65;
+    }
+    .card-footer a {
+      color: var(--gold); text-decoration: none; font-weight: 500;
+    }
+    .card-footer a:active { opacity: .7; }
+
+    /* ══════════════════════════════════════════
+       SUCCESS OVERLAY
+    ══════════════════════════════════════════ */
+    .success-overlay {
+      position: fixed; inset: 0;
+      background: rgba(13,15,20,0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 200;
+      display: grid; place-items: center;
+      padding: 24px;
+      opacity: 0; pointer-events: none; transition: opacity .35s;
+    }
+    .success-overlay.show { opacity: 1; pointer-events: all; }
+
+    .success-box {
+      background: #fff; border-radius: 22px;
+      padding: 40px 32px; text-align: center;
+      max-width: 320px; width: 100%;
+      box-shadow: var(--shadow-lg);
+      transform: scale(.9) translateY(12px);
+      transition: transform .4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .success-overlay.show .success-box { transform: scale(1) translateY(0); }
+
+    .success-check {
+      width: 62px; height: 62px; border-radius: 50%;
+      background: var(--green-light); border: 2.5px solid var(--green);
+      display: grid; place-items: center; font-size: 24px;
+      margin: 0 auto 16px;
+    }
+    .success-box h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px; font-weight: 900; color: var(--ink); margin-bottom: 8px;
+    }
+    .success-box p { font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+
+    .redirect-wrap {
+      margin-top: 20px; display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+      font-size: 12px; color: var(--ink-soft);
+    }
+    .redirect-bar {
+      width: 72px; height: 3px; background: var(--cream); border-radius: 2px; overflow: hidden;
+    }
+    .redirect-fill {
+      height: 100%; background: var(--green); border-radius: 2px;
+      width: 0; transition: width 3s linear;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-dots"></div>
+
+<!-- ════════════ CARD ════════════ -->
+<div class="card">
+
+  <!-- Logo -->
+  <a href="#" class="logo">
+    <div class="logo-mark">E</div>
+    <div class="logo-text">
+      <span>Evergreen Academy</span>
+      <span>Student Portal</span>
+    </div>
+  </a>
+
+  <!-- Heading -->
+  <div class="card-heading">
+    <div class="card-badge">
+      <svg width="7" height="7" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
+      Secure Access
+    </div>
+    <h1 class="card-title">Welcome back 👋</h1>
+    <p class="card-sub">Enter your Student ID and PIN to view results. Parents can use the same PIN shared with them.</p>
+  </div>
+
+  <!-- Form -->
+  <form id="loginForm" onsubmit="handleSubmit(event)" autocomplete="off" novalidate>
+
+    <!-- Student ID -->
+    <div class="input-group">
+      <div class="input-label">
+        <span>Student ID</span>
+      </div>
+      <div class="input-wrap">
+        <input type="text" id="studentId"
+               placeholder="e.g. EVG-2024-0047"
+               oninput="clearErrors()"
+               autocomplete="off"
+               spellcheck="false"
+               autocorrect="off"
+               autocapitalize="characters"/>
+        <span class="input-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <!-- PIN -->
+    <div class="input-group">
+      <div class="input-label">
+        <span>Access PIN</span>
+        <a href="#">Forgot PIN?</a>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="pinInput"
+               placeholder="Enter PIN"
+               maxlength="6"
+               inputmode="numeric"
+               pattern="[0-9]*"
+               oninput="onPinInput(this)"
+               autocomplete="one-time-code"/>
+        <button type="button" class="eye-btn" onclick="toggleVis()" aria-label="Toggle PIN visibility">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="error-msg" id="errorMsg">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span id="errorText">Invalid credentials. Please try again.</span>
+      </div>
+    </div>
+
+    <!-- PIN dots -->
+    <div class="pin-dots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="submit-btn" id="submitBtn">
+      <span class="btn-text">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Sign In to Portal
+      </span>
+      <div class="spinner"></div>
+    </button>
+
+  </form>
+
+  <!-- Divider + Help -->
+  <div class="divider"><span>Need help?</span></div>
+
+  <div class="help-strip">
+    <div class="help-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <div class="help-text">
+      <p>Contact the school office</p>
+      <p>admin@evergreenacademy.edu</p>
+    </div>
+  </div>
+
+  <p class="card-footer">
+    By signing in you agree to Evergreen Academy's
+    <a href="#">Privacy Policy</a> &amp; <a href="#">Terms of Use</a>.<br/>
+    &copy; 2024 Evergreen Academy. All rights reserved.
+  </p>
+
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-box">
+    <div class="success-check">✓</div>
+    <h2>Access Granted!</h2>
+    <p>Welcome, <strong>Chidera Emmanuel</strong>.<br/>
+       Redirecting to the results dashboard…</p>
+    <div class="redirect-wrap">
+      <span>Redirecting</span>
+      <div class="redirect-bar">
+        <div class="redirect-fill" id="redirectFill"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let pinVisible = false;
+
+  function onPinInput(input) {
+    clearErrors();
+    input.value = input.value.replace(/\D/g, '');
+    const len = input.value.length;
+    document.querySelectorAll('.pin-dot').forEach((d, i) => {
+      d.classList.remove('filled', 'complete');
+      if (i < len) d.classList.add(len === 6 ? 'complete' : 'filled');
+    });
+  }
+
+  function toggleVis() {
+    pinVisible = !pinVisible;
+    const inp = document.getElementById('pinInput');
+    inp.type = pinVisible ? 'text' : 'password';
+    inp.style.letterSpacing = pinVisible ? '0.15em' : '0.2em';
+    document.getElementById('eyeIcon').innerHTML = pinVisible
+      ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  }
+
+  function clearErrors() {
+    document.getElementById('pinInput').classList.remove('error', 'success');
+    document.getElementById('studentId').classList.remove('error');
+    document.getElementById('errorMsg').classList.remove('show');
+  }
+
+  function showError(msg) {
+    const pin = document.getElementById('pinInput');
+    pin.classList.add('error');
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorMsg').classList.add('show');
+    const dots = document.querySelectorAll('.pin-dot');
+    dots.forEach(d => { d.style.background = 'var(--red)'; d.style.borderColor = 'var(--red)'; });
+    setTimeout(() => {
+      dots.forEach(d => { d.style.background = ''; d.style.borderColor = ''; });
+      onPinInput(pin);
+    }, 650);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const idVal = document.getElementById('studentId').value.trim();
+    const pin   = document.getElementById('pinInput').value;
+
+    if (!idVal) {
+      document.getElementById('studentId').classList.add('error');
+      document.getElementById('errorText').textContent = 'Please enter your Student ID.';
+      document.getElementById('errorMsg').classList.add('show');
+      return;
+    }
+    if (pin.length < 4) {
+      showError('PIN must be at least 4 digits.');
+      return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.classList.add('loading');
+
+    setTimeout(() => {
+      btn.classList.remove('loading');
+      document.getElementById('pinInput').classList.add('success');
+      const overlay = document.getElementById('successOverlay');
+      overlay.classList.add('show');
+      setTimeout(() => { document.getElementById('redirectFill').style.width = '100%'; }, 80);
+      setTimeout(() => {
+        // window.location.href = '/results/';
+        overlay.classList.remove('show');
+      }, 3300);
+    }, 1800);
+  }
+
+  document.getElementById('successOverlay').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+  });
+</script>
+</body>
+</html>
