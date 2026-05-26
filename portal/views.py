@@ -14,6 +14,7 @@ from reportlab.lib.units import mm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from django.http import HttpResponse
 
 from .models import Student, Result, TermSummary
 # from .utils import logged_in_student   # adjust import path to match your project
@@ -646,3 +647,6 @@ def _build_term_cards(student):
             'attendance_dots':   build_attendance_dots(days_present, days_absent),
         })
     return term_cards
+
+def health_check(request):
+    return HttpResponse("OK")

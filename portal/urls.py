@@ -8,4 +8,5 @@ urlpatterns = [
     path('dashboard/',               views.dashboard_view,   name='dashboard'),
     path('results/<str:term>/',      views.term_result_view, name='term_result'),
     path('results/<str:term>/pdf/',  views.download_pdf_view,name='download_pdf'),
+    path('health/', views.health_check),
 ]
