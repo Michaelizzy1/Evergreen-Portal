@@ -17,7 +17,6 @@ psycopg2-binary==2.9.12
 PyMuPDF==1.27.2.3
 python-docx==1.2.0
 python-dotenv==1.2.2
-pywin32==311
 reportlab==4.5.1
 sqlparse==0.5.5
 termcolor==3.3.0
